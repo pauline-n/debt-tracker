@@ -146,6 +146,17 @@
         padding: 20px;
         font-size: 14px;
       }
+      #exportBtn{
+        background-color: green;
+        color: white;
+        border-radius: 10px;
+        border: none;
+        padding: 7px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        
+      }
+      
     </style>
   </head>
   <body>
@@ -188,9 +199,13 @@
         <button type="submit">Add Entry</button>
       </form>
 
+      <button type="button" id="exportBtn">
+          Export Records to Excel
+        </button>
       <div id="list">
         <div class="empty">No entries yet. Add your first one above.</div>
       </div>
+      
     </div>
 
     <script>
@@ -261,6 +276,57 @@
         save();
         render();
       }
+
+      // function to impact export to excel button
+      function exportToExcel() {
+          if (entries.length === 0) {
+              alert("There are no records to export.");
+              return;
+          }
+
+          // Create the column headings
+          const headers = ["Name", "Amount (UGX)", "Type", "Note"];
+
+          // Convert each debt record into a row
+          const rows = entries.map((e) => [
+              e.name,
+              e.amount,
+              e.type === "owed" ? "I Am Owed" : "I Owe",
+              e.note || ""
+          ]);
+
+          // Escape values so commas and quotation marks are handled correctly
+          const csvContent = [headers, ...rows]
+              .map((row) =>
+                  row.map((value) =>
+                      '"' + String(value ?? "").replace(/"/g, '""') + '"'
+                  ).join(",")
+              )
+              .join("\r\n");
+
+          // Add a BOM to help Excel display text correctly
+          const blob = new Blob(
+              ["\uFEFF" + csvContent],
+              { type: "text/csv;charset=utf-8;" }
+          );
+
+          // Create a temporary download link
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+
+          link.href = url;
+          link.download = "debt_records.csv";
+
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+
+          URL.revokeObjectURL(url);
+      }
+
+      // Connect the button to the export function
+      document.getElementById("exportBtn")
+          .addEventListener("click", exportToExcel);
 
       document.getElementById("form").addEventListener("submit", function (ev) {
         ev.preventDefault();
