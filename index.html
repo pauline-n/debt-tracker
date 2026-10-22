@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debt Tracker</title>
+
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --card: #fff;
+        --text: #1a1a1a;
+        --muted: #6b7280;
+        --owe: #dc2626;
+        --owed: #16a34a;
+        --accent: #2563eb;
+        --border: #e5e7eb;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #111318;
+          --card: #1c1f26;
+          --text: #f3f4f6;
+          --muted: #9ca3af;
+          --border: #2a2e37;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #111318;
+        --card: #1c1f26;
+        --text: #f3f4f6;
+        --muted: #9ca3af;
+        --border: #2a2e37;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+      }
+      .wrap {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 20px 16px 60px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 16px;
+      }
+      .summary {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .sum-card {
+        flex: 1;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+      }
+      .sum-card .label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .sum-card .val {
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 4px;
+      }
+      form {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 18px;
+      }
+      form input,
+      form select {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 8px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text);
+        font-size: 14px;
+      }
+      form button {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .entry {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .entry .name {
+        font-weight: 600;
+      }
+      .entry .note {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .entry .amt {
+        font-weight: 700;
+      }
+      .amt.owe {
+        color: var(--owe);
+      }
+      .amt.owed {
+        color: var(--owed);
+      }
+      .entry button {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 18px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      .empty {
+        color: var(--muted);
+        text-align: center;
+        padding: 20px;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Debt Tracker</h1>
+      <div class="summary">
+        <div class="sum-card">
+          <div class="label">You Lent</div>
+          <div class="val" id="totalOwed">UGX 0</div>
+        </div>
+        <div class="sum-card">
+          <div class="label">You Borrowed</div>
+          <div class="val" id="totalOwe">UGX 0</div>
+        </div>
+        <div class="sum-card">
+          <div class="label">Net Balance</div>
+          <div class="val" id="net">UGX 0</div>
+        </div>
+      </div>
+
+      <form id="form">
+        <input
+          type="text"
+          id="name"
+          placeholder="Person's or organisation's name"
+        />
+        <input
+          type="number"
+          id="amount"
+          placeholder="Amount (UGX)"
+          min="1"
+          step="1"
+          required
+        />
+        <select id="type">
+          <option value="owe">I Owe - Borrowed</option>
+          <option value="owed">I Am Owed - Lent</option>
+        </select>
+        <input type="text" id="note" placeholder="Note (optional)" />
+        <button type="submit">Add Entry</button>
+      </form>
+
+      <div id="list">
+        <div class="empty">No entries yet. Add your first one above.</div>
+      </div>
+    </div>
+
+    <script>
+      let entries = [];
+      try {
+        const saved = localStorage.getItem("debtEntries");
+        if (saved) entries = JSON.parse(saved);
+      } catch (e) {
+        entries = [];
+      }
+
+      function save() {
+        try {
+          localStorage.setItem("debtEntries", JSON.stringify(entries));
+        } catch (e) {}
+      }
+
+      function render() {
+        const list = document.getElementById("list");
+        list.innerHTML = "";
+        if (entries.length === 0) {
+          list.innerHTML =
+            '<div class="empty">No entries yet. Add your first one above.</div>';
+        } else {
+          entries
+            .slice()
+            .reverse()
+            .forEach((e) => {
+              const idx = entries.indexOf(e);
+              const div = document.createElement("div");
+              div.className = "entry";
+              div.innerHTML = `
+        <div>
+          <div class="name">${escapeHtml(e.name)}</div>
+          ${e.note ? `<div class="note">${escapeHtml(e.note)}</div>` : ""}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="amt ${e.type}">${e.type === "owed" ? "+" : "-"}$${Number(e.amount).toFixed(2)}</div>
+          <button onclick="removeEntry(${idx})">&times;</button>
+        </div>`;
+              list.appendChild(div);
+            });
+        }
+        const owed = entries
+          .filter((e) => e.type === "owed")
+          .reduce((s, e) => s + Number(e.amount), 0);
+        const owe = entries
+          .filter((e) => e.type === "owe")
+          .reduce((s, e) => s + Number(e.amount), 0);
+        document.getElementById("totalOwed").textContent =
+          "Ushs" + owed.toFixed(2);
+        document.getElementById("totalOwe").textContent = "Ushs" + owe.toFixed(2);
+        const net = owed - owe;
+        const netEl = document.getElementById("net");
+        netEl.textContent =
+          (net >= 0 ? "+" : "-") + "Ushs" + Math.abs(net).toFixed(2);
+        netEl.style.color = net >= 0 ? "var(--owed)" : "var(--owe)";
+      }
+
+      function escapeHtml(str) {
+        const d = document.createElement("div");
+        d.textContent = str;
+        return d.innerHTML;
+      }
+
+      function removeEntry(idx) {
+        entries.splice(idx, 1);
+        save();
+        render();
+      }
+
+      document.getElementById("form").addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        const name = document.getElementById("name").value.trim();
+        const amount = document.getElementById("amount").value;
+        const type = document.getElementById("type").value;
+        const note = document.getElementById("note").value.trim();
+        if (!name || !amount) return;
+        entries.push({ name, amount, type, note });
+        save();
+        render();
+        this.reset();
+      });
+
+      render();
+    </script>
+  </body>
+</html>
